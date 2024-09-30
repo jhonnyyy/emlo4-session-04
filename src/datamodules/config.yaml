@@ -1,0 +1,27 @@
+kaggle:
+  api_key: "bbcb8a74b0b9f8a17b1d0700eec56a97"
+  username: "nitinyadav29"
+
+dataset:
+  name: "khushikhushikhushi/dog-breed-image-dataset"
+
+model:
+  num_classes: 10
+
+training:
+  batch_size: 8
+  num_workers: 2
+  learning_rate: 1e-3
+  max_epochs: 1
+
+dog_breeds:
+  - Golden Retriever
+  - German Shepherd
+  - Labrador Retriever
+  - Bulldog
+  - Beagle
+  - Poodle
+  - Rottweiler
+  - Yorkshire Terrier
+  - Boxer
+  - Dachshund
