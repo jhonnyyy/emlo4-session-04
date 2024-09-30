@@ -1,6 +1,6 @@
 kaggle:
-  api_key: "bbcb8a74b0b9f8a17b1d0700eec56a97"
-  username: "nitinyadav29"
+  api_key: "api_key"
+  username: "username"
 
 dataset:
   name: "khushikhushikhushi/dog-breed-image-dataset"
