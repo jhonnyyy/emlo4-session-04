@@ -1,0 +1,35 @@
+defaults:
+  - hydra: default
+  - data: dog_breed
+  - model: dogbreed
+  - callbacks: default
+  - logger: tensorboard
+  - trainer: default
+  - paths: default
+  
+
+task_name: "dog_breed_classification"
+
+# Explicitly set the project root
+project_root: ${hydra:runtime.cwd}
+
+# disable python warnings if they annoy you
+ignore_warnings: True
+paths:
+  data_dir: ${hydra:runtime.cwd}/data/dog-breed-image-dataset
+  log_dir: ${hydra:runtime.cwd}/logs
+
+trainer:
+  fast_dev_run: false
+
+hydra:
+  run:
+    dir: ${paths.log_dir}/${task_name}
+  job:
+    name: ${task_name}
+  output_subdir: null
+  verbose: false
+
+model:
+  name: resnet50
+  pretrained: true

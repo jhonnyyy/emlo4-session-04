@@ -12,7 +12,7 @@ This project uses a deep learning model to classify dog breeds.
 ### Build the Docker Image
 
 ```bash
-docker build -t dogbreed-classifier .
+docker build -t dogbreed .
 ```
 
 If you encounter disk space issues, try the following:
@@ -30,19 +30,24 @@ If you encounter disk space issues, try the following:
 
 3. Build without cache:
    ```
-   docker build --no-cache -t dogbreed-classifier .
+   docker build --no-cache -t dogbreed .
    ```
 
 ### Run the Entire Pipeline
 
 This command will run the training, evaluation, and inference in sequence:
 
-```bash
-docker run -v $(pwd)/data:/app/data \
-           -v $(pwd)/src/models:/app/models \
-           -v $(pwd)/logs:/app/logs \
-           dogbreed-classifier
-```
+1. Training
+
+docker run -v ${PWD}/data:/app/data -v ${PWD}/logs:/app/logs dogbreed src/train.py
+
+2. Evaluation 
+
+docker run -v ${PWD}/data:/app/data -v ${PWD}/logs:/app/logs dogbreed src/eval.py
+
+3. Inference 
+
+docker run -v ${PWD}/data:/app/data -v ${PWD}/logs:/app/logs dogbreed src/infer.py
 
 ## Volume Mounts Explained
 
@@ -54,19 +59,16 @@ Make sure these directories exist in your project structure before running the D
 
 ## Configuration
 
-The `config.yaml` file is located at `src/datamodules/config.yaml`. Ensure this file is properly configured before building the Docker image.
+IN the config module, there are all the config files for the project. 
 
-## Troubleshooting
+Add the kaggle username and apikey to @configs/data/dog_breed.yaml file.
 
-If you're experiencing disk space issues:
+## For testing using coverage 
 
-1. Check available disk space: Use `df -h` to view available space.
-2. Increase Docker's disk space allocation in Docker Desktop settings.
-3. Use a `.dockerignore` file to exclude unnecessary files from the build context.
+# to run the test
+coverage run -m pytest
+
+# to check the coverage report
+coverage report -m
 
 For more detailed instructions, refer to the Docker documentation.
-
-## Additional Notes
-
-- Ensure that your `requirements.txt` file includes only necessary dependencies.
-- Place your test images in the `./data/test_images` directory before running the Docker container.

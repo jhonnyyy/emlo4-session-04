@@ -1,0 +1,33 @@
+defaults:
+  - data: dog_breed
+  - model: dogbreed
+  - callbacks: default
+  - paths: default
+  - logger: tensorboard
+  - trainer: default
+  - hydra: default
+
+task_name: "dog_breed_classification"
+
+# Explicitly set the project root
+project_root: ${hydra:runtime.cwd}
+
+# disable python warnings if they annoy you
+ignore_warnings: True
+
+# set hydra.job.name to task_name
+hydra:
+  job:
+    name: ${task_name}
+
+# Explicitly set the output directory
+paths:
+  output_dir: ${hydra:runtime.cwd}/logs/${task_name}
+  test_images_dir: ${paths.data_dir}/test
+
+infer:
+  num_images: 10  # Number of images to run inference on
+
+data:
+  batch_size: ${data.datamodule.batch_size}
+  num_workers: ${data.datamodule.num_workers}

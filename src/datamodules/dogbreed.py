@@ -1,158 +1,126 @@
+# import os
+# import torch 
+# import lightning as L
+# from torch.utils.data import DataLoader, random_split
+# from torchvision import transforms
+# from torchvision.datasets import ImageFolder
+
+# class DogBreedDataModule(L.LightningDataModule):
+#     def __init__(self, data_dir: str, batch_size: int = 32, num_workers: int = 4, kaggle: bool = False, kaggle_api_key: str = None, kaggle_username: str = None):
+#         super().__init__()
+#         self.data_dir = data_dir
+#         self.batch_size = batch_size
+#         self.num_workers = num_workers
+#         self.kaggle = kaggle
+#         self.kaggle_api_key = kaggle_api_key
+#         self.kaggle_username = kaggle_username
+
+#         self.train_dataset = None
+#         self.val_dataset = None
+#         self.test_dataset = None
+
+#         self.transform = transforms.Compose([
+#             transforms.Resize((224, 224)),
+#             transforms.ToTensor(),
+#         ])
+
+#     def prepare_data(self):
+#         if self.kaggle and not os.path.exists(self.data_dir):
+#             os.environ['KAGGLE_USERNAME'] = self.kaggle_username
+#             os.environ['KAGGLE_KEY'] = self.kaggle_api_key
+            
+#             try:
+#                 from kaggle.api.kaggle_api_extended import KaggleApi
+#                 api = KaggleApi()
+#                 api.authenticate()
+#                 api.dataset_download_files('khushikhushikhushi/dog-breed-image-dataset', path=self.data_dir, unzip=True)
+#             except Exception as e:
+#                 print(f"Error downloading dataset: {e}")
+#                 raise
+
+#     def setup(self, stage=None):
+#         full_dataset = ImageFolder(self.data_dir, transform=self.transform)
+#         self.train_dataset, self.val_dataset, self.test_dataset = self._split_dataset(full_dataset)
+
+#     def train_dataloader(self):
+#         return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+
+#     def val_dataloader(self):
+#         return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+#     def test_dataloader(self):
+#         return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+#     def _split_dataset(self, dataset):
+#         total_size = len(dataset)
+#         train_size = int(0.7 * total_size)
+#         val_size = int(0.15 * total_size)
+#         test_size = total_size - train_size - val_size
+#         return random_split(dataset, [train_size, val_size, test_size])
+    
+
 import os
-import yaml
-import subprocess
-import shutil
 import torch
 import lightning as L
-from torch.utils.data import DataLoader, Subset, random_split
+from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
 class DogBreedDataModule(L.LightningDataModule):
-    def __init__(self, config_path: str = "src/datamodules/config.yaml"):
+    def __init__(self, data_dir: str, batch_size: int = 32, num_workers: int = 4, kaggle: bool = False, kaggle_api_key: str = None, kaggle_username: str = None):     
         super().__init__()
-        self.config_path = config_path
-        self.load_config()
-        self.set_kaggle_credentials()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+        self.num_workers = min(num_workers, os.cpu_count() or 1)
+        self.kaggle = kaggle
+        self.kaggle_api_key = kaggle_api_key
+        self.kaggle_username = kaggle_username
 
-    def load_config(self):
-        try:
-            with open(self.config_path, 'r') as config_file:
-                self.config = yaml.safe_load(config_file)
-            print(f"Config loaded successfully from {self.config_path}")
-            self.data_dir = os.path.join(os.getcwd(), "data")
-            self.batch_size = self.config['training']['batch_size']
-            self.num_workers = min(self.config['training']['num_workers'], 2)  # Limit number of workers
-        except Exception as e:
-            print(f"Error loading config: {e}")
-            raise
-
-    def set_kaggle_credentials(self):
-        try:
-            os.environ['KAGGLE_USERNAME'] = self.config['kaggle']['username']
-            os.environ['KAGGLE_KEY'] = self.config['kaggle']['api_key']
-            print("Kaggle credentials set as environment variables")
-        except KeyError as e:
-            print(f"Error setting Kaggle credentials: {e}")
-            print("Please ensure 'kaggle' section with 'username' and 'api_key' is present in your config file")
-            raise
+        self.train_dataset = None
+        self.val_dataset = None
+        self.test_dataset = None
 
     def prepare_data(self):
-        try:
-            print(f"Downloading dataset: {self.config['dataset']['name']}")
-            dataset_name = self.config['dataset']['name']
-            command = f"kaggle datasets download -d {dataset_name} -p {self.data_dir} --unzip"
-            result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
-            print("Dataset downloaded successfully")
-            print(result.stdout)
-            
-            # Check and reorganize the dataset if necessary
-            self._reorganize_dataset()
-        except subprocess.CalledProcessError as e:
-            print(f"Error downloading dataset: {e}")
-            print(f"Command output: {e.output}")
-            raise
-        except Exception as e:
-            print(f"Unexpected error in prepare_data: {e}")
-            raise
+        if self.kaggle and not os.path.exists(self.data_dir):
+            os.environ['KAGGLE_USERNAME'] = self.kaggle_username
+            os.environ['KAGGLE_KEY'] = self.kaggle_api_key
 
-    def _reorganize_dataset(self):
-        print("Checking dataset structure...")
-        # Look for the directory containing the breed folders
-        for root, dirs, files in os.walk(self.data_dir):
-            if len(dirs) == 10 and all(breed in dirs for breed in ['Beagle', 'Boxer', 'Bulldog', 'Dachshund', 'German_Shepherd']):
-                self.data_dir = root
-                print(f"Found correct dataset directory: {self.data_dir}")
-                break
-        else:
-            raise FileNotFoundError(f"Could not find directory with 10 dog breed folders in {self.data_dir}")
-        
-        self._print_directory_structure(self.data_dir)
-        print("Dataset structure check completed")
-
-    def _print_directory_structure(self, startpath):
-        print(f"Directory structure of {startpath}:")
-        for root, dirs, files in os.walk(startpath):
-            level = root.replace(startpath, '').count(os.sep)
-            indent = ' ' * 4 * (level)
-            print(f"{indent}{os.path.basename(root)}/")
-            subindent = ' ' * 4 * (level + 1)
-            for f in files[:5]:  # Print only first 5 files to avoid clutter
-                print(f"{subindent}{f}")
-            if len(files) > 5:
-                print(f"{subindent}... ({len(files) - 5} more files)")
+            try:
+                from kaggle.api.kaggle_api_extended import KaggleApi
+                api = KaggleApi()
+                api.authenticate()
+                api.dataset_download_files('khushikhushikhushi/dog-breed-image-dataset', path=self.data_dir, unzip=True)
+            except Exception as e:
+                print(f"Error downloading dataset: {e}")
+                raise
 
     def setup(self, stage=None):
-        print("Setting up datasets...")
-        self.transform = transforms.Compose([
+        transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        try:
-            print(f"Loading dataset from: {self.data_dir}")
-            full_dataset = ImageFolder(self.data_dir, transform=self.transform)
-            self.classes = full_dataset.classes
-            print(f"Detected classes: {self.classes}")
-            print(f"Dataset created. Total size: {len(full_dataset)}")
-            
-            # Split the dataset into train, validation, and test
-            total_size = len(full_dataset)
-            train_size = int(0.7 * total_size)
-            val_size = int(0.15 * total_size)
-            test_size = total_size - train_size - val_size
-            
-            self.train_dataset, self.val_dataset, self.test_dataset = random_split(
-                full_dataset, [train_size, val_size, test_size],
-                generator=torch.Generator().manual_seed(42)  # for reproducibility
-            )
-            
-            print(f"Dataset split. Train size: {len(self.train_dataset)}, "
-                  f"Validation size: {len(self.val_dataset)}, "
-                  f"Test size: {len(self.test_dataset)}")
+        full_dataset = ImageFolder(self.data_dir, transform=transform)
+        train_size = int(0.7 * len(full_dataset))
+        val_size = int(0.15 * len(full_dataset))
+        test_size = len(full_dataset) - train_size - val_size
 
-            print(f"Number of classes in the dataset: {len(self.classes)}")
-            print(f"Number of classes in the configuration: {self.config['model']['num_classes']}")
-            
-            assert len(self.classes) == self.config['model']['num_classes'], \
-                f"Number of classes in the dataset ({len(self.classes)}) " \
-                f"does not match the configuration ({self.config['model']['num_classes']})"
-            print("Class number assertion passed")
-        except Exception as e:
-            print(f"Error in setup: {e}")
-            raise
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(
+            full_dataset, [train_size, val_size, test_size]
+        )
 
     def train_dataloader(self):
-        return DataLoader(
-            self.train_dataset, 
-            batch_size=self.batch_size, 
-            num_workers=self.num_workers, 
-            shuffle=True,
-            pin_memory=True,
-            persistent_workers=True
-        )
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True, collate_fn=self._collate_fn)
 
     def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset, 
-            batch_size=self.batch_size, 
-            num_workers=self.num_workers, 
-            pin_memory=True,
-            persistent_workers=True
-        )
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
     def test_dataloader(self):
-        return DataLoader(
-            self.test_dataset, 
-            batch_size=self.batch_size, 
-            num_workers=self.num_workers, 
-            pin_memory=True,
-            persistent_workers=True
-        )
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
-# For testing purposes
-if __name__ == "__main__":
-    data_module = DogBreedDataModule()
-    data_module.prepare_data()
-    data_module.setup()
+    def _collate_fn(self, batch):
+        images, labels = zip(*batch)
+        images = torch.stack(images)
+        labels = torch.tensor(labels)
+        return images, labels

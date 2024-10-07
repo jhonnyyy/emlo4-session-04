@@ -1,23 +1,44 @@
-# Use a smaller base image
-FROM python:3.9-slim
+# Build stage
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
-# Set the working directory in the container
+ENV UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
 WORKDIR /app
 
-# Copy only necessary files
-COPY requirements.txt /app/
-COPY src /app/src/
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+	--mount=type=bind,source=uv.lock,target=uv.lock \
+	--mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+	uv sync --frozen --no-install-project --no-dev
 
-# Install dependencies and clean up in one layer
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir kaggle && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends gcc libc6-dev && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /root/.cache/pip && \
-    mkdir -p /app/data /app/models /app/logs && \
-    chmod +x /app/src/run_all.sh && \
-    apt-get purge -y --auto-remove gcc libc6-dev
+# Copy the rest of the application
+ADD . /app
 
-# Set the entrypoint to the run_all.sh script
-ENTRYPOINT ["/app/src/run_all.sh"]
+# Install the project and its dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+	uv sync --frozen --no-dev
+
+# Final stage
+FROM python:3.12-slim-bookworm
+
+# Copy the application from the builder
+COPY --from=builder --chown=app:app /app /app
+
+# Place executables in the environment at the front of the path
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Set the working directory
+WORKDIR /app
+
+# Make sure all scripts in src are executable
+RUN chmod +x /app/src/*.py
+
+# Add the current directory to PYTHONPATH
+ENV PYTHONPATH="/app:$PYTHONPATH"
+
+# Set the entrypoint to python
+ENTRYPOINT ["python"]
+
+# Set a default command (can be overridden)
+CMD ["/app/src/train.py"]

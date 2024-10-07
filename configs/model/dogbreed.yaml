@@ -1,0 +1,16 @@
+model:
+  name: "resnet50"
+  pretrained: true
+  checkpoint_path: ${paths.checkpoints_dir}/best-checkpoint.ckpt
+
+training:
+  learning_rate: 1e-3
+
+metrics:
+  accuracy:
+    task: "multiclass"
+    num_classes: ${data.extra.num_classes}
+
+optimizer:
+  name: "Adam"
+  lr: 1e-3
