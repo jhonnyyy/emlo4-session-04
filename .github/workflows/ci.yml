@@ -1,0 +1,134 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ session_05 ]
+  pull_request:
+    branches: [ session_05 ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    - name: Run tests
+      run: |
+        poetry run pytest tests/
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+    - name: Build Docker image
+      run: |
+        docker build -t dogbreed-classifier .
+        docker save dogbreed-classifier:latest > dogbreed-classifier.tar
+    - name: Upload Docker image artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: dogbreed-classifier-image
+        path: dogbreed-classifier.tar
+
+  train-and-evaluate:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    - name: Download Docker image artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: dogbreed-classifier-image
+    - name: Load Docker image
+      run: docker load < dogbreed-classifier.tar
+    - name: Train model
+      run: |
+        poetry run python src/train.py trainer.max_epochs=5 model.model.name=resnet18
+    - name: Evaluate model
+      id: evaluate
+      run: |
+        accuracy=$(poetry run python src/eval.py)
+        echo "Model accuracy: $accuracy"
+        if (( $(echo "$accuracy < 0.95" | bc -l) )); then
+          echo "Accuracy is below 95%. Failing the workflow."
+          exit 1
+        fi
+        echo "accuracy=$accuracy" >> $GITHUB_OUTPUT
+    - name: Upload model artifacts
+      if: steps.evaluate.outputs.accuracy >= 0.95
+      uses: actions/upload-artifact@v2
+      with:
+        name: model-artifacts
+        path: |
+          logs/
+          configs/
+          ${paths.checkpoints_dir}/best-checkpoint.ckpt
+    - name: Create Release
+      if: steps.evaluate.outputs.accuracy >= 0.95
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release ${{ github.run_number }}
+        body: |
+          Model accuracy: ${{ steps.evaluate.outputs.accuracy }}
+        draft: false
+        prerelease: false
+
+  train-and-evaluate-cat-dog:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    - name: Download Docker image artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: dogbreed-classifier-image
+    - name: Load Docker image
+      run: docker load < dogbreed-classifier.tar
+    - name: Train cat-dog model
+      run: |
+        poetry run python src/train.py cat_dog=cat_dog trainer.max_epochs=5 model.model.name=resnet18
+    - name: Evaluate cat-dog model
+      id: evaluate
+      run: |
+        accuracy=$(poetry run python src/eval.py cat_dog=cat_dog)
+        echo "Model accuracy: $accuracy"
+        if (( $(echo "$accuracy < 0.95" | bc -l) )); then
+          echo "Accuracy is below 95%. Failing the workflow."
+          exit 1
+        fi
+        echo "accuracy=$accuracy" >> $GITHUB_OUTPUT
+    - name: Upload cat-dog model artifacts
+      if: steps.evaluate.outputs.accuracy >= 0.95
+      uses: actions/upload-artifact@v2
+      with:
+        name: cat-dog-model-artifacts
+        path: |
+          logs/
+          configs/
+          ${paths.checkpoints_dir}/best-checkpoint.ckpt
