@@ -33,3 +33,14 @@ hydra:
 model:
   name: resnet50
   pretrained: true
+
+# Cat-Dog classification specific configurations
+cat_dog:
+  task_name: "cat_dog_classification"
+  data_dir: ${hydra:runtime.cwd}/data/cats_and_dogs_filtered
+  model:
+    name: resnet18
+    pretrained: true
+  trainer:
+    max_epochs: 5
+    accelerator: cpu

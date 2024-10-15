@@ -13,9 +13,12 @@ RUN pip install --no-cache-dir poetry && \
 COPY . .
 
 # Final stage
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm AS final
 
 WORKDIR /app
+
+# Create a non-root user
+RUN useradd -m appuser
 
 # Copy the installed packages and the application from the builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
@@ -26,6 +29,12 @@ RUN chmod +x /app/src/*.py
 
 # Add the current directory to PYTHONPATH
 ENV PYTHONPATH="/app:$PYTHONPATH"
+
+# Ensure Python output is sent straight to the container log
+ENV PYTHONUNBUFFERED=1
+
+# Switch to non-root user
+USER appuser
 
 # Set the entrypoint to python
 ENTRYPOINT ["python"]

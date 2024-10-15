@@ -45,7 +45,9 @@ def main(cfg: DictConfig):
     )
 
     # Evaluate the model
-    trainer.test(model, datamodule=data_module)
+    test_metrics = trainer.test(model, datamodule=data_module)
+    accuracy = test_metrics[0]['test_acc']
+    print(f"{accuracy:.4f}")
 
 if __name__ == "__main__":
     main()
