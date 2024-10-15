@@ -30,7 +30,7 @@ jobs:
         docker build -t dogbreed-classifier .
         docker save dogbreed-classifier:latest > dogbreed-classifier.tar
     - name: Upload Docker image artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: dogbreed-classifier-image
         path: dogbreed-classifier.tar
@@ -70,7 +70,7 @@ jobs:
         echo "accuracy=$accuracy" >> $GITHUB_OUTPUT
     - name: Upload model artifacts
       if: steps.evaluate.outputs.accuracy >= 0.95
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: model-artifacts
         path: |
@@ -125,7 +125,7 @@ jobs:
         echo "accuracy=$accuracy" >> $GITHUB_OUTPUT
     - name: Upload cat-dog model artifacts
       if: steps.evaluate.outputs.accuracy >= 0.95
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: cat-dog-model-artifacts
         path: |
