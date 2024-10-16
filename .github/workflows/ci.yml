@@ -20,11 +20,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry
         poetry install
-    - name: Run tests
+    - name: Run tests with coverage
       run: |
-        poetry run pytest tests/
+        poetry run coverage run -m pytest tests/
+        poetry run coverage xml -o coverage.xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        fail_ci_if_error: true
     - name: Build Docker image
       run: |
         docker build -t dogbreed-classifier .
