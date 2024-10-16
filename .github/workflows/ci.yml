@@ -63,7 +63,7 @@ jobs:
       id: evaluate
       run: |
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        accuracy=$(poetry run python src/eval.py +experiment=cat_dog)
+        accuracy=$(poetry run python src/eval.py +experiment=cat_dog | grep -oP 'Accuracy: \K[0-9.]+')
         echo "Model accuracy: $accuracy"
         if (( $(echo "$accuracy < 0.95" | bc -l) )); then
           echo "Accuracy is below 95%. Failing the workflow."
