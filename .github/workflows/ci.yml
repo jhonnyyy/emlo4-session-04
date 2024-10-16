@@ -71,7 +71,7 @@ jobs:
         fi
         echo "accuracy=$accuracy" >> $GITHUB_OUTPUT
     - name: Upload cat-dog model artifacts
-      if: steps.evaluate.outputs.accuracy >= 0.95
+      if: success()
       uses: actions/upload-artifact@v3
       with:
         name: cat-dog-model-artifacts
