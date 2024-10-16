@@ -58,12 +58,12 @@ jobs:
     - name: Train cat-dog model
       run: |
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        poetry run python src/train.py cat_dog=cat_dog trainer.max_epochs=5 model.model.name=resnet18
+        poetry run python src/train.py +experiment=cat_dog trainer.max_epochs=5 model.model.name=resnet18
     - name: Evaluate cat-dog model
       id: evaluate
       run: |
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        accuracy=$(poetry run python src/eval.py cat_dog=cat_dog)
+        accuracy=$(poetry run python src/eval.py +experiment=cat_dog)
         echo "Model accuracy: $accuracy"
         if (( $(echo "$accuracy < 0.95" | bc -l) )); then
           echo "Accuracy is below 95%. Failing the workflow."
